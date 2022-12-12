@@ -16,10 +16,10 @@ public class HabrCareerParse {
 
     private static final String PAGE_LINK = String.format("%s/vacancies/java_developer", SOURCE_LINK);
 
-    private static final int pageCount = 5;
+    private static final int PAGE_COUNT = 5;
 
     public static void main(String[] args) throws IOException {
-        for (int page = 1; page <= pageCount; page++) {
+        for (int page = 1; page <= PAGE_COUNT; page++) {
             Connection connection = Jsoup.connect(String.format("%s?page=%d", PAGE_LINK, page));
             Document document = connection.get();
             Elements rows = document.select(".vacancy-card__inner");
