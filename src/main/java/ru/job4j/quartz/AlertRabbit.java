@@ -2,10 +2,12 @@ package ru.job4j.quartz;
 
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
+
 import java.sql.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.DriverManager;
+import java.time.LocalDateTime;
 import java.util.Properties;
 
 import static org.quartz.JobBuilder.*;
@@ -27,10 +29,8 @@ public class AlertRabbit {
             }
             Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
             scheduler.start();
-
             JobDataMap data = new JobDataMap();
             data.put("connection", connection);
-
             JobDetail job = newJob(Rabbit.class)
                     .usingJobData(data)
                     .build();
@@ -49,6 +49,7 @@ public class AlertRabbit {
             e.printStackTrace();
         }
     }
+
     private static Properties getProperties() {
         Properties pr = new Properties();
         try (InputStream in = AlertRabbit.class.getClassLoader()
@@ -60,19 +61,12 @@ public class AlertRabbit {
         return pr;
     }
 
-    private static Connection initConnection(Properties pr) {
-        Connection connection = null;
-        try {
-            Class.forName(pr.getProperty("driver_class"));
-            String url = pr.getProperty("url");
-            String login = pr.getProperty("login");
-            String password = pr.getProperty("password");
-            connection =  DriverManager.getConnection(url, login, password);
-            return connection;
-        } catch (Exception ex) {
-            ex.printStackTrace();
-        }
-        return connection;
+    private static Connection initConnection(Properties pr) throws Exception {
+        Class.forName(pr.getProperty("driver_class"));
+        String url = pr.getProperty("url");
+        String login = pr.getProperty("login");
+        String password = pr.getProperty("password");
+        return DriverManager.getConnection(url, login, password);
     }
 
     public static void printTable(Connection connection, String tableName) throws Exception {
@@ -94,12 +88,10 @@ public class AlertRabbit {
         public void execute(JobExecutionContext context) {
             System.out.println("Rabbit runs here ...");
             Connection connection = (Connection) context.getJobDetail().getJobDataMap().get("connection");
-            try (Statement statement = connection.createStatement()) {
-                String sql = String.format(
-                        "insert into rabbit (created_date) values (%s);",
-                        "current_timestamp"
-                );
-                statement.execute(sql);
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "insert into rabbit (created_date) values (?)")) {
+                ps.setTimestamp(1, Timestamp.valueOf(LocalDateTime.now()));
+                ps.execute();
             } catch (SQLException e) {
                 e.printStackTrace();
             }
