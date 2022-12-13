@@ -5,10 +5,12 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import ru.job4j.grabber.utils.DateTimeParser;
 import ru.job4j.grabber.utils.HabrCareerDateTimeParser;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.StringJoiner;
 
 public class HabrCareerParse {
 
@@ -29,11 +31,26 @@ public class HabrCareerParse {
                 Element dateElement = row.select(".vacancy-card__date").first().child(0);
                 String vacancyName = titleElement.text();
                 String link = String.format("%s%s", SOURCE_LINK, linkElement.attr("href"));
-                HabrCareerDateTimeParser parser = new HabrCareerDateTimeParser();
+                DateTimeParser parser = new HabrCareerDateTimeParser();
                 LocalDateTime date = parser.parse(dateElement.attr("datetime"));
-                System.out.printf("%s %s %s%n", vacancyName, link, date);
+                String description = retrieveDescription(link);
+                System.out.printf("%s %s %s%n%s%n%n", vacancyName, link, date, description);
             });
         }
 
+    }
+
+    private static String retrieveDescription(String link) {
+        StringJoiner joiner = new StringJoiner(System.lineSeparator());
+        try {
+            Connection connection = Jsoup.connect(link);
+            Document document = connection.get();
+            Elements descriptionText = document.select(".style-ugc");
+            descriptionText.forEach(text -> text.children()
+                    .forEach(line -> joiner.add(line.text())));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return joiner.toString();
     }
 }
