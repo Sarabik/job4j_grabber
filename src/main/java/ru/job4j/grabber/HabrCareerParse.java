@@ -13,7 +13,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringJoiner;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class HabrCareerParse implements Parse {
 
@@ -44,7 +43,7 @@ public class HabrCareerParse implements Parse {
             descriptionText.forEach(text -> text.children()
                     .forEach(line -> joiner.add(line.text())));
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new IllegalArgumentException("Link does not exist");
         }
         return joiner.toString();
     }
@@ -52,7 +51,6 @@ public class HabrCareerParse implements Parse {
     @Override
     public List<Post> list(String link) {
         List<Post> listPosts = new ArrayList<>();
-        AtomicInteger id = new AtomicInteger(1);
         try {
             for (int page = 1; page <= PAGE_COUNT; page++) {
                 Connection connection = Jsoup.connect(String.format("%s?page=%d", link, page));
@@ -62,16 +60,20 @@ public class HabrCareerParse implements Parse {
                     Element titleElement = row.select(".vacancy-card__title").first();
                     Element linkElement = titleElement.child(0);
                     Element dateElement = row.select(".vacancy-card__date").first().child(0);
-                    String vacancyName = titleElement.text();
-                    String pageLink = String.format("%s%s", SOURCE_LINK, linkElement.attr("href"));
-                    LocalDateTime date = dateTimeParser.parse(dateElement.attr("datetime"));
-                    String description = retrieveDescription(pageLink);
-                    listPosts.add(new Post(id.getAndIncrement(), vacancyName, pageLink, description, date));
+                    listPosts.add(parsePost(titleElement, linkElement, dateElement));
                 });
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new IllegalArgumentException("Link does not exist");
         }
         return listPosts;
+    }
+
+    private Post parsePost(Element titleEl, Element linkEl, Element dateEl) {
+        String vacancyName = titleEl.text();
+        String pageLink = String.format("%s%s", SOURCE_LINK, linkEl.attr("href"));
+        LocalDateTime date = dateTimeParser.parse(dateEl.attr("datetime"));
+        String description = retrieveDescription(pageLink);
+        return new Post(vacancyName, pageLink, description, date);
     }
 }
