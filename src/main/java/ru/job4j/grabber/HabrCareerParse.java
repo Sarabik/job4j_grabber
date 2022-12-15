@@ -56,12 +56,7 @@ public class HabrCareerParse implements Parse {
                 Connection connection = Jsoup.connect(String.format("%s?page=%d", link, page));
                 Document document = connection.get();
                 Elements rows = document.select(".vacancy-card__inner");
-                rows.forEach(row -> {
-                    Element titleElement = row.select(".vacancy-card__title").first();
-                    Element linkElement = titleElement.child(0);
-                    Element dateElement = row.select(".vacancy-card__date").first().child(0);
-                    listPosts.add(parsePost(titleElement, linkElement, dateElement));
-                });
+                rows.forEach(row -> listPosts.add(parsePost(row)));
             }
         } catch (IOException e) {
             throw new IllegalArgumentException("Link does not exist");
@@ -69,10 +64,13 @@ public class HabrCareerParse implements Parse {
         return listPosts;
     }
 
-    private Post parsePost(Element titleEl, Element linkEl, Element dateEl) {
-        String vacancyName = titleEl.text();
-        String pageLink = String.format("%s%s", SOURCE_LINK, linkEl.attr("href"));
-        LocalDateTime date = dateTimeParser.parse(dateEl.attr("datetime"));
+    private Post parsePost(Element element) {
+        Element titleElement = element.select(".vacancy-card__title").first();
+        Element linkElement = titleElement.child(0);
+        Element dateElement = element.select(".vacancy-card__date").first().child(0);
+        String vacancyName = titleElement.text();
+        String pageLink = String.format("%s%s", SOURCE_LINK, linkElement.attr("href"));
+        LocalDateTime date = dateTimeParser.parse(dateElement.attr("datetime"));
         String description = retrieveDescription(pageLink);
         return new Post(vacancyName, pageLink, description, date);
     }
