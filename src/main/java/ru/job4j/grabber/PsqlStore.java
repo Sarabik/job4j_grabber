@@ -32,12 +32,18 @@ public class PsqlStore implements Store {
     @Override
     public void save(Post post) {
         try (PreparedStatement st = cnn.prepareStatement(
-                "INSERT INTO post (name, text, link, created) VALUES (?, ?, ?, ?) ON CONFLICT (link) DO NOTHING")) {
+                "INSERT INTO post (name, text, link, created) VALUES (?, ?, ?, ?) ON CONFLICT (link) DO NOTHING",
+                Statement.RETURN_GENERATED_KEYS)) {
             st.setString(1, post.getTitle());
             st.setString(2, post.getDescription());
             st.setString(3, post.getLink());
             st.setTimestamp(4, Timestamp.valueOf(post.getCreated()));
             st.executeUpdate();
+            try (ResultSet generatedKeys = st.getGeneratedKeys()) {
+                if (generatedKeys.next()) {
+                    post.setId(generatedKeys.getInt(1));
+                }
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -49,12 +55,7 @@ public class PsqlStore implements Store {
         try (Statement st = cnn.createStatement()) {
             ResultSet result = st.executeQuery("SELECT * FROM post;");
             while (result.next()) {
-                list.add(new Post(
-                        result.getInt("id"),
-                        result.getString("name"),
-                        result.getString("text"),
-                        result.getString("link"),
-                        result.getTimestamp("created").toLocalDateTime()));
+                list.add(getPostFromSet(result));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -69,18 +70,22 @@ public class PsqlStore implements Store {
                 "SELECT * FROM post WHERE id = ?")) {
             st.setInt(1, id);
             ResultSet result = st.executeQuery();
-            while (result.next()) {
-                post = new Post(
-                        result.getInt("id"),
-                        result.getString("name"),
-                        result.getString("text"),
-                        result.getString("link"),
-                        result.getTimestamp("created").toLocalDateTime());
+            if (result.next()) {
+                post = getPostFromSet(result);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return post;
+    }
+
+    private Post getPostFromSet(ResultSet result) throws SQLException {
+        return new Post(
+                result.getInt("id"),
+                result.getString("name"),
+                result.getString("text"),
+                result.getString("link"),
+                result.getTimestamp("created").toLocalDateTime());
     }
 
     @Override
@@ -99,14 +104,12 @@ public class PsqlStore implements Store {
         }
         Post testPost1 = new Post("Java Developer1", "link1", "description", LocalDateTime.now());
         Post testPost2 = new Post("Java Developer2", "link2", "description", LocalDateTime.now());
-        try {
-            PsqlStore store = new PsqlStore(cfg);
+        try (PsqlStore store = new PsqlStore(cfg)) {
             store.save(testPost1);
             store.save(testPost2);
             store.getAll().forEach(System.out::println);
             System.out.println(store.findById(1));
-            store.cnn.close();
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
