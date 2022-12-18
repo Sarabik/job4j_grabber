@@ -102,8 +102,8 @@ public class PsqlStore implements Store {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        Post testPost1 = new Post("Java Developer1", "link1", "description", LocalDateTime.now());
-        Post testPost2 = new Post("Java Developer2", "link2", "description", LocalDateTime.now());
+        Post testPost1 = new Post("Java Developer1", "description", "link1", LocalDateTime.now());
+        Post testPost2 = new Post("Java Developer2", "description", "link1", LocalDateTime.now());
         try (PsqlStore store = new PsqlStore(cfg)) {
             store.save(testPost1);
             store.save(testPost2);
