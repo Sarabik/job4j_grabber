@@ -16,6 +16,8 @@ import static org.quartz.TriggerBuilder.newTrigger;
 
 public class Grabber implements Grab {
     private final Properties cfg = new Properties();
+    private static final String SOURCE_LINK = "https://career.habr.com";
+    private static final String PAGE_LINK = String.format("%s/vacancies/java_developer", SOURCE_LINK);
 
     public Store store() {
         return new PsqlStore(cfg);
@@ -49,13 +51,6 @@ public class Grabber implements Grab {
                 .withSchedule(times)
                 .build();
         scheduler.scheduleJob(job, trigger);
-        /* works 5 minutes then shut down */
-        try {
-            Thread.sleep(60000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        scheduler.shutdown();
     }
 
     public static class GrabJob implements Job {
@@ -65,8 +60,6 @@ public class Grabber implements Grab {
             JobDataMap map = context.getJobDetail().getJobDataMap();
             Store store = (Store) map.get("store");
             Parse parse = (Parse) map.get("parse");
-            final String SOURCE_LINK = "https://career.habr.com";
-            final String PAGE_LINK = String.format("%s/vacancies/java_developer", SOURCE_LINK);
             List<Post> list = parse.list(PAGE_LINK);
             list.forEach(store::save);
         }
